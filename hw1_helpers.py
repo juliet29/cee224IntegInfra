@@ -69,7 +69,7 @@ def solve_quad(a, b, c):
     # a = a
     # b = b.magnitude
     # c = c.magnitude
-    print(a,b,c)
+    # print(a,b,c)
     d = b ** 2 - 4 * a * c  # this part is called the discriminant
 
     if d < 0:
