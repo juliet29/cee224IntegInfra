@@ -38,8 +38,11 @@ def get_district_coordinates(city, sdk=SDK):
     coords = {}
 
     for district in districts:
-        results = sdk.geocoding(query=f"{district}, {city}", limit=1)
-        coords[district] = results.features[0].geometry.coordinates
+        try:
+            results = sdk.geocoding(query=f"{district}, {city}", limit=1)
+            coords[district] = results.features[0].geometry.coordinates
+        except IndexError:
+            coords[district] = (0,0)
 
     df = pd.DataFrame.from_dict(coords, orient="index", columns=["Longitude", "Latitude"])
     df.to_csv(f"{city}/coords.csv")
@@ -93,5 +96,5 @@ def main(city):
 
 
 if __name__ == '__main__':
-    main("singapore")
-    # main("san francisco")
+    # main("singapore")
+    main("san francisco")
