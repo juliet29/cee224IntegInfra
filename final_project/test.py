@@ -4,7 +4,7 @@ import json
 from flask import jsonify
 import pickle 
 
-from traveltimepy import  Coordinates, TravelTimeSdk, PublicTransport, Driving, Walking, Cycling
+from traveltimepy import Coordinates, TravelTimeSdk, PublicTransport, Driving, Walking, Cycling, errors
 from math import radians, cos, sin, asin, sqrt
 
 def distance(lat1, lat2, lon1, lon2):
@@ -34,48 +34,36 @@ sdk = TravelTimeSdk(app_id=APP_ID, api_key=APP_KEY, limit_per_host=4)
 
 
 df = pd.read_csv("constants/singapore_coords.csv", index_col=0)
-long = df.iloc[0]["Longitude"]
-lat = df.iloc[0]["Latitude"]
+# long = df.iloc[0]["Longitude"]
+# lat = df.iloc[0]["Latitude"]
 max_time = 60*30 # (30 mins )
 
-sing_vals = {}
-district_name=df.iloc[0].name
-sing_vals[district_name] = {}
+# sing_vals = {}
+# district_name=df.iloc[0].name
+# sing_vals[district_name] = {}
 
-for mode in [PublicTransport, Driving, Walking, Cycling]:
-    results = sdk.time_map(
-        coordinates=[Coordinates(lat=lat, lng=long)],
-        departure_time=datetime.now(),
-        transportation=mode(),
-        travel_time = max_time
-    )
-    shell = results[0].shapes[0].shell
-    sing_vals[district_name][f"{mode}"] = max([distance(lat, i.lat, long, i.lng) for i in shell]) # km 
+def calc_max_dist(lat, long):
+    vals = {}
+    for mode in [PublicTransport, Driving, Walking, Cycling]:
+        try:
+            results = sdk.time_map(
+                coordinates=[Coordinates(lat=lat, lng=long)],
+                departure_time=datetime.now(),
+                transportation=mode(),
+                travel_time = max_time
+            )
+            shell = results[0].shapes[0].shell
+            max_d = max([distance(lat, i.lat, long, i.lng) for i in shell]) # km 
+        except errors.ApiError: 
+            print(lat, long)
+            max_d = 0
+            pass
 
-# dump = "{'list':" + results + "}"
-pickle.dump(sing_vals, open("constants/test_coords.p", "wb"))
+        vals[f"{mode().type}"] =  max_d 
 
-# with open('constants/test_coords.txt','w') as f:
-#     f.write(results)
-# output 
-# shell = results[0].shapes[0].shell
+    return vals
 
+res = df.apply(lambda row: calc_max_dist(row.Latitude, row.Longitude), axis=1)
 
+pickle.dump(res, open("constants/singapore_mdists.p", "wb"))
 
-
-
-# path = "constants/districts.csv"
-# districts_df = pd.read_csv(path)
-# singapore_districts = list(districts_df["Singapore"])
-# singapore_coords = {}
-
-# for district in singapore_districts:
-#     results = sdk.geocoding(query=district, limit=1)
-#     singapore_coords[district] = results.features[0].geometry.coordinates
-
-# print(singapore_coords)
-
-# get coordinates 
-# results.features[0].geometry.coordinates
-
-# print(results)
