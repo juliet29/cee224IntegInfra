@@ -37,11 +37,11 @@ def get_district_coordinates(city, sdk=SDK):
     districts = list(districts_df[city])
     coords = {}
 
-    for district in districts[0:3]:
+    for district in districts:
         results = sdk.geocoding(query=f"{district}, {city}", limit=1)
         coords[district] = results.features[0].geometry.coordinates
 
-    df = pd.DataFrame.from_dict(coords, orient="index")
+    df = pd.DataFrame.from_dict(coords, orient="index", columns=["Longitude", "Latitude"])
     df.to_csv(f"{city}/coords.csv")
 
     return df
@@ -84,8 +84,8 @@ def main(city):
     # clean up results into csv
     df_maxdist = pd.DataFrame(res)
     a = df_maxdist.apply(lambda row: [i for i in OrderedDict(row)[0].values()], axis=1).values
-    df_fin = pd.DataFrame([i for i in a], columns=df_coords.iloc[0].values[0].keys(), index=df_coords.index)
-    df_fin.to_csv("{city}/data.csv")
+    df_fin = pd.DataFrame([i for i in a], columns=df_maxdist.iloc[0].values[0].keys(), index=df_maxdist.index)
+    df_fin.to_csv(f"{city}/data.csv")
 
     return True 
 
@@ -94,4 +94,4 @@ def main(city):
 
 if __name__ == '__main__':
     main("singapore")
-    main("san francisco")
+    # main("san francisco")
