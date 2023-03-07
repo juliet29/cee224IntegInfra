@@ -38,7 +38,7 @@ def get_district_coordinates(city, sdk=SDK):
     coords = {}
 
     for district in districts[0:3]:
-        results = sdk.geocoding(query=district, limit=1)
+        results = sdk.geocoding(query=f"{district}, {city}", limit=1)
         coords[district] = results.features[0].geometry.coordinates
 
     df = pd.DataFrame.from_dict(coords, orient="index")
@@ -59,7 +59,7 @@ def calc_max_dist(lat, long, name, city, sdk=SDK, max_time=MAX_TIME):
             )
             shell = results[0].shapes[0].shell
             # save results for future graphing 
-            pickle.dump(shell, open(f"{city}/{name}.p", "wb"))
+            pickle.dump(shell, open(f"{city}/shells/{name}.p", "wb"))
             # calculate maximum distance from the center point 
             max_d = max([distance(lat, i.lat, long, i.lng) for i in shell]) # km 
             
@@ -75,18 +75,23 @@ def calc_max_dist(lat, long, name, city, sdk=SDK, max_time=MAX_TIME):
 
 
 def main(city):
-    df = pd.read_csv("constants/singapore_coords.csv", index_col=0)
+    # get the coordinates for each district 
+    df_coords = get_district_coordinates(city, sdk=SDK)
 
-    res = df.apply(lambda row: calc_max_dist(row.Latitude, row.Longitude), axis=1)
+    # get the max distance possible traveling from each district coordinate
+    res = df_coords.apply(lambda row: calc_max_dist(row.Latitude, row.Longitude, row.name, city=city), axis=1)
 
-    df2 = pd.DataFrame(res)
-    a = df2.apply(lambda row: [i for i in OrderedDict(row)[0].values()], axis=1).values
-    sing_df = pd.DataFrame([i for i in a], columns=df.iloc[0].values[0].keys(), index=df.index)
-    sing_df.to_csv("constants/sing_data.csv")
+    # clean up results into csv
+    df_maxdist = pd.DataFrame(res)
+    a = df_maxdist.apply(lambda row: [i for i in OrderedDict(row)[0].values()], axis=1).values
+    df_fin = pd.DataFrame([i for i in a], columns=df_coords.iloc[0].values[0].keys(), index=df_coords.index)
+    df_fin.to_csv("{city}/data.csv")
 
-    # # pickle.dump(res, open("constants/singapore_mdists.p", "wb"))
-    # pass
+    return True 
+
+
 
 
 if __name__ == '__main__':
-    get_district_coordinates("Singapore", sdk=SDK)
+    main("singapore")
+    main("san francisco")
