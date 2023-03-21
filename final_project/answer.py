@@ -16,6 +16,7 @@ from plotly.subplots import make_subplots
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.inspection import permutation_importance
+from sklearn.linear_model import LinearRegression
 
 
 class Answer():
@@ -101,15 +102,18 @@ class Answer():
 
     def create_sig_pca_df(self, col_ix=[0,3,4,5]):
         self.sig_pca_df = self.pca_df.iloc[:, col_ix]
-        self.pairplot = sns.pairplot(self.sig_pca_df , height=1, aspect =2)
+        self.pairplot = sns.pairplot(self.sig_pca_df , height=1, aspect =2,  ) # kind="reg"
 
 
-    def rf_r2(self, y, X, columns=[]):
+    def rf_r2(self, y, X, columns=[], lin=False):
         if len(columns) == 0:
             columns = X.columns
             
         X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=42)
-        forest = RandomForestRegressor(random_state=1)
+        if lin:
+            forest = LinearRegression()
+        else:
+            forest = RandomForestRegressor(random_state=1)
         forest.fit(X_train, y_train)
 
         # alt way to calc
@@ -123,7 +127,7 @@ class Answer():
         fig, ax = plt.subplots()
         forest_importances.plot.bar(yerr=result.importances_std, ax=ax)
         ax.set_title("Feature importances using permutation on full model")
-        ax.set_ylabel("Mean accuracy decrease")
+        ax.set_ylabel("Mean accuracy contribution ")
         fig.tight_layout()
         plt.close()
 
@@ -134,7 +138,7 @@ class Answer():
         return r2, fig 
     
 
-    def run_rf(self):
+    def run_rf(self, second=False, lin=False):
         r2s = []
         figs = []
 
@@ -144,7 +148,7 @@ class Answer():
         X_orig = pd.concat([self.landuse, self.dists, self.costs], axis=1)
         X = preprocessing.scale(X_orig)
 
-        r2, fig = self.rf_r2(y, X, X_orig.columns)
+        r2, fig = self.rf_r2(y, X, X_orig.columns, lin=lin)
         r2s.append(r2)
         figs.append(fig)
 
@@ -152,7 +156,7 @@ class Answer():
         # non-filtered pca  
         y = self.pca_df["qol_PC1"]
         X = self.pca_df.iloc[:, 0:-1]
-        r2, fig = self.rf_r2(y, X)
+        r2, fig = self.rf_r2(y, X, lin=lin)
         r2s.append(r2)
         figs.append(fig)
 
@@ -160,12 +164,32 @@ class Answer():
         # filtered pca
         y = self.sig_pca_df["qol_PC1"]
         X = self.sig_pca_df.iloc[:, 0:3]
-        r2, fig = self.rf_r2(y, X)
+        r2, fig = self.rf_r2(y, X, lin=lin)
         r2s.append(r2)
         figs.append(fig)
 
         self.r2s = r2s
         self.rf_figs = figs 
+
+        # filtered pca
+        if second:
+            y = self.sig_pca_df["qol_PC2"]
+            X = self.sig_pca_df.iloc[:, 0:3]
+            r2, fig = self.rf_r2(y, X)
+            r2s.append(r2)
+            figs.append(fig)
+
+            y = self.pca_df["qol_PC1"] # unfiltered pca, above is wrong! => ignore 2nd index in results 
+            X = self.pca_df.iloc[:, 0:-2]
+            r2, fig = self.rf_r2(y, X)
+            r2s.append(r2)
+            figs.append(fig)
+
+        self.r2s = r2s
+        self.rf_figs = figs 
+
+
+
 
 
 
